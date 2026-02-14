@@ -3,7 +3,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'meli-frontend/**'
+      - 'front/meli-frontend/**'
+      - '.github/workflows/frontend.yml'
 
 permissions:
   id-token: write
@@ -21,21 +22,24 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
 
       - name: Build Frontend
         run: |
-          cd meli-frontend
+          cd front/meli-frontend
           npm install
           npm run build
 
-      - name: Sync S3
+      - name: Deploy to S3
         run: |
-          aws s3 sync meli-frontend/dist/ s3://meli-frontend-luke-2026 --delete
+          aws s3 sync front/meli-frontend/dist/ s3://tasador-frontend-bucket --delete
 
+      # PASO CLAVE: Limpiar la caché de CloudFront automáticamente
       - name: Invalidate CloudFront
         run: |
-          aws cloudfront create-invalidation --distribution-id E2LPE4VOP7GPJ --paths "/*"
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
