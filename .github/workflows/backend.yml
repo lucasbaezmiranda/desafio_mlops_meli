@@ -4,6 +4,7 @@ on:
     branches: [ main ]
     paths:
       - 'api_inmuebles/**'
+      - '.github/workflows/backend.yml'
 
 permissions:
   id-token: write
@@ -25,24 +26,22 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Configuramos Buildx para poder usar opciones avanzadas de limpieza
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: meli-api-repo
-          IMAGE_TAG: latest
-        run: |
-          cd api_inmuebles
-          # --provenance=false elimina los metadatos que la Lambda no soporta
-          # --platform linux/amd64 asegura que la arquitectura sea la correcta
-          docker build --provenance=false --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      # Usamos la acción oficial para forzar el formato compatible con Lambda
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api_inmuebles
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/meli-api-repo:latest
+          platforms: linux/amd64
+          provenance: false  # ESTO ELIMINA LOS METADATOS QUE FALLAN EN LAMBDA
+          format: docker     # ESTO FUERZA EL FORMATO QUE AWS ENTIENDE
 
       - name: Update Lambda function
         run: |
           aws lambda update-function-code \
             --function-name meli-api-lambda \
-            --image-uri 196861675915.dkr.ecr.us-east-1.amazonaws.com/meli-api-repo:latest
+            --image-uri ${{ steps.login-ecr.outputs.registry }}/meli-api-repo:latest
