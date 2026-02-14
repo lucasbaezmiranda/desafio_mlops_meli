@@ -1,0 +1,29 @@
+# --- Dependencias y Entornos ---
+node_modules/
+front/meli-frontend/node_modules/
+.venv/
+data/.venv/
+
+# --- Artefactos de Build y Python ---
+dist/
+front/meli-frontend/dist/
+*.pyc
+__pycache__/
+api_inmuebles/__pycache__/
+
+# --- Binarios de Infraestructura (EL PROBLEMA DE VELOCIDAD) ---
+infra/aws/
+infra/awscliv2.zip
+infra/.terraform/
+
+# --- Datos Pesados (Datasets de ML) ---
+data/input/ar_properties.csv
+data/input/ar_properties.pkl
+arbol.txt
+
+# --- Terraform y Secretos ---
+*.tfstate*
+*.tfvars
+.env
+.DS_Store
+*.log
