@@ -25,6 +25,10 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Configuramos Buildx para poder usar opciones avanzadas de limpieza
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -32,7 +36,9 @@ jobs:
           IMAGE_TAG: latest
         run: |
           cd api_inmuebles
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          # --provenance=false elimina los metadatos que la Lambda no soporta
+          # --platform linux/amd64 asegura que la arquitectura sea la correcta
+          docker build --provenance=false --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Update Lambda function
