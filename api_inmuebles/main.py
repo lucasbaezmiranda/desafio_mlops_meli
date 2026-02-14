@@ -35,7 +35,7 @@ except Exception as e:
     model = None
     print(f"❌ Error cargando el modelo: {e}")
 
-# 4. Esquema de datos (9 variables requeridas)
+# 4. Esquema de datos
 class PropertyInput(BaseModel):
     lat: float
     lon: float
@@ -58,10 +58,10 @@ def predict(data: PropertyInput):
         raise HTTPException(status_code=500, detail="Modelo no disponible")
 
     try:
-        # Creamos un DataFrame vacío con todas las columnas que el modelo conoce
+        # Creamos un DataFrame con ceros respetando el orden de columnas del entrenamiento
         input_df = pd.DataFrame(0, index=[0], columns=model_features)
 
-        # Asignamos variables numéricas
+        # Asignamos variables numéricas (¡Ojo! Verificar si el modelo espera valores reales o transformados)
         input_df["lat"] = data.lat
         input_df["lon"] = data.lon
         input_df["rooms"] = data.rooms
@@ -70,7 +70,7 @@ def predict(data: PropertyInput):
         input_df["surface_total"] = data.surface_total
         input_df["surface_covered"] = data.surface_covered
 
-        # One-Hot Encoding Manual para las categorías
+        # One-Hot Encoding Manual
         col_l2 = f"l2_{data.l2}"
         col_type = f"property_type_{data.property_type}"
 
@@ -79,15 +79,23 @@ def predict(data: PropertyInput):
         if col_type in input_df.columns:
             input_df[col_type] = 1
 
+        # DEBUG - Esto aparecerá en los logs de CloudWatch de la Lambda
+        print(f"DEBUG - JSON recibido: {data.dict()}")
+        # Mostramos solo las columnas que NO son cero para verificar el OHE
+        active_features = input_df.columns[(input_df != 0).any()].tolist()
+        print(f"DEBUG - Features activas en DataFrame: {input_df[active_features].to_dict()}")
+
         # Inferencia
         prediction = float(model.predict(input_df)[0])
         
         return {
             "precio_predicho": round(prediction, 2),
             "moneda": "USD",
-            "propiedad": f"{data.property_type} en {data.l2}"
+            "propiedad": f"{data.property_type} en {data.l2}",
+            "features_usadas": active_features
         }
     except Exception as e:
+        print(f"❌ Error en la lógica de predicción: {e}")
         raise HTTPException(status_code=500, detail=f"Error en predicción: {str(e)}")
 
 # Adaptador para AWS Lambda
