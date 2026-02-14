@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from mangum import Mangum
 
 # 1. Definir la App
-app = FastAPI(title="Price Predictor API", version="1.1")
+app = FastAPI(title="Price Predictor API", version="1.2")
 
 # 2. CONFIGURACIÓN DE CORS
 app.add_middleware(
@@ -23,14 +23,10 @@ TASK_ROOT = os.environ.get('LAMBDA_TASK_ROOT', '.')
 MODEL_PATH = os.path.join(TASK_ROOT, "model/xgb_price_predictor_v1.joblib")
 
 try:
-    if os.path.exists(MODEL_PATH):
-        artifact = joblib.load(MODEL_PATH)
-        model = artifact["model"]
-        model_features = artifact["features"]
-        print(f"✅ Modelo cargado. Features: {len(model_features)}")
-    else:
-        model = None
-        print(f"❌ ERROR: No se encontró el modelo en {MODEL_PATH}")
+    artifact = joblib.load(MODEL_PATH)
+    model = artifact["model"]
+    model_features = artifact["features"]
+    print(f"✅ Modelo cargado. Features: {len(model_features)}")
 except Exception as e:
     model = None
     print(f"❌ Error cargando el modelo: {e}")
@@ -58,32 +54,19 @@ def predict(data: PropertyInput):
         raise HTTPException(status_code=500, detail="Modelo no disponible")
 
     try:
-        # Creamos un DataFrame con ceros respetando el orden de columnas del entrenamiento
-        input_df = pd.DataFrame(0, index=[0], columns=model_features)
+        # A. Convertimos el input directo a DataFrame (Lógica Celda 45 del notebook)
+        df = pd.DataFrame([data.dict()])
 
-        # Asignamos variables numéricas (¡Ojo! Verificar si el modelo espera valores reales o transformados)
-        input_df["lat"] = data.lat
-        input_df["lon"] = data.lon
-        input_df["rooms"] = data.rooms
-        input_df["bedrooms"] = data.bedrooms
-        input_df["bathrooms"] = data.bathrooms
-        input_df["surface_total"] = data.surface_total
-        input_df["surface_covered"] = data.surface_covered
+        # B. Aplicamos One-Hot Encoding (Igual que en entrenamiento)
+        df_encoded = pd.get_dummies(df)
 
-        # One-Hot Encoding Manual
-        col_l2 = f"l2_{data.l2}"
-        col_type = f"property_type_{data.property_type}"
+        # C. ALINEACIÓN CRÍTICA: Reindexamos usando la lista de features guardada
+        # Esto pone 1 en la categoría elegida, 0 en las demás, y mantiene solo las top features.
+        input_df = df_encoded.reindex(columns=model_features, fill_value=0)
 
-        if col_l2 in input_df.columns:
-            input_df[col_l2] = 1
-        if col_type in input_df.columns:
-            input_df[col_type] = 1
-
-        # DEBUG - Esto aparecerá en los logs de CloudWatch de la Lambda
-        print(f"DEBUG - JSON recibido: {data.dict()}")
-        # Mostramos solo las columnas que NO son cero para verificar el OHE
+        # DEBUG - Para ver qué está recibiendo el modelo realmente
         active_features = input_df.columns[(input_df != 0).any()].tolist()
-        print(f"DEBUG - Features activas en DataFrame: {input_df[active_features].to_dict()}")
+        print(f"DEBUG - Features activas para predicción: {input_df[active_features].to_dict()}")
 
         # Inferencia
         prediction = float(model.predict(input_df)[0])
@@ -92,7 +75,10 @@ def predict(data: PropertyInput):
             "precio_predicho": round(prediction, 2),
             "moneda": "USD",
             "propiedad": f"{data.property_type} en {data.l2}",
-            "features_usadas": active_features
+            "debug_info": {
+                "features_usadas": active_features,
+                "superficie_cubierta": float(data.surface_covered)
+            }
         }
     except Exception as e:
         print(f"❌ Error en la lógica de predicción: {e}")
