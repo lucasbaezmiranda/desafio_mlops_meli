@@ -1,0 +1,44 @@
+On branch main
+
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+	new file:   .github/workflows/backend.yml
+	new file:   .github/workflows/frontend.yml
+	new file:   .gitignore
+	new file:   api_inmuebles/Dockerfile
+	new file:   api_inmuebles/main.py
+	new file:   api_inmuebles/model/xgb_price_predictor_v1.joblib
+	new file:   api_inmuebles/requirements.txt
+	new file:   data/.gitignore
+	new file:   data/notebooks/main_1.ipynb
+	new file:   data/requirements.txt
+	new file:   data/setup_ml.sh
+	new file:   front/meli-frontend/.gitignore
+	new file:   front/meli-frontend/README.md
+	new file:   front/meli-frontend/eslint.config.js
+	new file:   front/meli-frontend/index.html
+	new file:   front/meli-frontend/package-lock.json
+	new file:   front/meli-frontend/package.json
+	new file:   front/meli-frontend/public/favicon.png
+	new file:   front/meli-frontend/public/vite.svg
+	new file:   front/meli-frontend/src/App.css
+	new file:   front/meli-frontend/src/App.jsx
+	new file:   front/meli-frontend/src/assets/react.svg
+	new file:   front/meli-frontend/src/index.css
+	new file:   front/meli-frontend/src/main.jsx
+	new file:   front/meli-frontend/tower.png
+	new file:   front/meli-frontend/vite.config.js
+	new file:   infra/.terraform.lock.hcl
+	new file:   infra/app_runner.tf.bak
+	new file:   infra/ecr.tf
+	new file:   infra/lambda.tf
+	new file:   infra/provider.tf
+	new file:   infra/s3_front.tf
+	new file:   infra/warmup.tf
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	status.txt
+
