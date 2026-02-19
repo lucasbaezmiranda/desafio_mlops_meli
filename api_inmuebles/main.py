@@ -2,12 +2,13 @@ import os
 import joblib
 import pandas as pd
 import numpy as np
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mangum import Mangum
 
-# 1. Definición de la App (Versión 2.1 - Simplificada)
+# 1. Definición de la App
 app = FastAPI(title="Meli Price Predictor - Slim Version", version="2.1")
 
 app.add_middleware(
@@ -26,20 +27,17 @@ MODEL_PATH = os.path.join(TASK_ROOT, "model/linear_price_predictor_v2.joblib")
 try:
     artifact = joblib.load(MODEL_PATH)
     model_pipeline = artifact["model"] 
-    # Las 6 columnas reales: bathrooms, surface_total, l2_Capital Federal, 
-    # bedrooms, l2_Buenos Aires Interior, surface_covered
     model_features = artifact["features"]
     print(f"✅ Pipeline cargado. Usando las {len(model_features)} variables ganadoras.")
 except Exception as e:
     model_pipeline = None
     print(f"❌ Error crítico cargando el modelo: {e}")
 
-# 3. ESQUEMA DE ENTRADA REFINADO
-# Solo pedimos lo que el modelo realmente utiliza
+# 3. ESQUEMA DE ENTRADA
 class PropertyInput(BaseModel):
-    l2: str             # Ubicación (CABA, Interior, etc.)
-    bedrooms: int       # Dormitorios
-    bathrooms: int      # Baños
+    l2: str             
+    bedrooms: int       
+    bathrooms: int      
     surface_total: float
     surface_covered: float
 
@@ -53,27 +51,33 @@ def predict(data: PropertyInput):
     if not model_pipeline:
         raise HTTPException(status_code=500, detail="Modelo no disponible")
 
+    # --- NUEVO: LOG DE ENTRADA ---
+    # Imprime el JSON completo que recibe la Lambda
+    print(f"PRED_LOG_INPUT: {data.json()}")
+
     try:
         # A. Crear DataFrame con las 5 entradas
         df = pd.DataFrame([data.dict()])
 
-        # B. One-Hot Encoding (Convierte 'l2' en columnas l2_Capital Federal, etc.)
+        # B. One-Hot Encoding
         df_encoded = pd.get_dummies(df)
 
-        # C. ALINEACIÓN CON LAS 6 FEATURES DEL MODELO
-        # Este paso es el que hace la magia: si 'l2' no es Capital Federal, 
-        # la columna 'l2_Capital Federal' se llena con 0.
+        # C. ALINEACIÓN CON LAS FEATURES DEL MODELO
         input_df = df_encoded.reindex(columns=model_features, fill_value=0)
 
         # D. INFERENCIA
-        # El pipeline aplica el StandardScaler y el Imputer automáticamente
         prediction_raw = model_pipeline.predict(input_df)[0]
         
         # Filtro de seguridad para el precio
         prediction = max(float(prediction_raw), 5000.0)
+        final_price = round(prediction, 2)
+
+        # --- NUEVO: LOG DE SALIDA ---
+        # Imprime solo el resultado de la inferencia
+        print(f"PRED_LOG_OUTPUT: {final_price}")
         
         return {
-            "precio_predicho": round(prediction, 2),
+            "precio_predicho": final_price,
             "moneda": "USD",
             "detalles": {
                 "ubicacion": data.l2,
@@ -82,7 +86,8 @@ def predict(data: PropertyInput):
             }
         }
     except Exception as e:
-        print(f"❌ Error en predicción: {e}")
+        # Log de error para debuguear fallos en el procesamiento
+        print(f"❌ PRED_LOG_ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 handler = Mangum(app)
