@@ -22,7 +22,7 @@ resource "aws_lambda_function" "api_lambda" {
   function_name = "meli-api-lambda"
   role          = aws_iam_role.iam_for_lambda.arn
   package_type  = "Image"
-  image_uri     = "196861675915.dkr.ecr.us-east-1.amazonaws.com/meli-api-repo:latest"
+  image_uri     = "${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/meli-api-repo:latest"
   
   memory_size = 3008  # Más CPU para cargar el modelo rápido
   timeout     = 180   # Evitamos el "Endpoint request timed out"

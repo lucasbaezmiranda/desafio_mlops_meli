@@ -8,5 +8,5 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1" # La región que configuraste en la CLI
+  region = var.aws_region
 }

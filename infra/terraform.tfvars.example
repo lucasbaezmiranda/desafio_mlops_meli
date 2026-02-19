@@ -1,0 +1,13 @@
+# Copiá este archivo a terraform.tfvars y reemplazá con tus valores reales.
+# terraform.tfvars está en .gitignore y NUNCA debe subirse a GitHub.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#   (editar terraform.tfvars con tus datos)
+
+aws_region = "us-east-1"
+
+# Tu ID de cuenta AWS (12 dígitos). Lo ves en la consola o con: aws sts get-caller-identity
+aws_account_id = "000000000000"
+
+# ARN del certificado en ACM (Certificate Manager) para el dominio de CloudFront
+acm_certificate_arn = "arn:aws:acm:us-east-1:000000000000:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
