@@ -46,7 +46,7 @@ body {
 .app-root {
   min-height: 100vh;
   padding: 2rem 1rem 3rem;
-  background: linear-gradient(160deg, #f0f4f8 0%, #e8eef5 50%, #f5f6f8 100%);
+  background: linear-gradient(160deg, #4f8ac5 0%, #6ca1dd 50%, #f5f6f8 100%);
 }
 
 .container {
