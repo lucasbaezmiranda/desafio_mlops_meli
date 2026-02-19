@@ -3,7 +3,7 @@ import joblib
 import pandas as pd
 import numpy as np
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request # Agregamos Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mangum import Mangum
@@ -47,12 +47,19 @@ def health_check():
 
 @app.post("/predict")
 @app.post("/prod/predict")
-def predict(data: PropertyInput):
+async def predict(data: PropertyInput, request: Request): # Agregamos request
     if not model_pipeline:
         raise HTTPException(status_code=500, detail="Modelo no disponible")
 
-    # --- NUEVO: LOG DE ENTRADA ---
-    # Imprime el JSON completo que recibe la Lambda
+    # --- EXTRACCIÓN DE METADATOS ---
+    # Capturamos la IP (vía API Gateway) y el navegador/herramienta que llama
+    client_ip = request.client.host if request.client else "IP Desconocida"
+    user_agent = request.headers.get("user-agent", "Desconocido")
+
+    # --- LOGS DE AUDITORÍA ---
+    # Log de acceso (IP y Agente)
+    print(f"PRED_LOG_ACCESS | IP: {client_ip} | Agent: {user_agent}")
+    # Log de entrada (JSON de la propiedad)
     print(f"PRED_LOG_INPUT: {data.json()}")
 
     try:
@@ -72,8 +79,8 @@ def predict(data: PropertyInput):
         prediction = max(float(prediction_raw), 5000.0)
         final_price = round(prediction, 2)
 
-        # --- NUEVO: LOG DE SALIDA ---
-        # Imprime solo el resultado de la inferencia
+        # --- LOG DE SALIDA ---
+        # Imprimimos el resultado final
         print(f"PRED_LOG_OUTPUT: {final_price}")
         
         return {
@@ -83,10 +90,13 @@ def predict(data: PropertyInput):
                 "ubicacion": data.l2,
                 "impacto_baños": "USD 108,239 por unidad",
                 "variables_procesadas": model_features
+            },
+            "info_peticion": {
+                "ip_origen": client_ip
             }
         }
     except Exception as e:
-        # Log de error para debuguear fallos en el procesamiento
+        # Log de error mejorado
         print(f"❌ PRED_LOG_ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
